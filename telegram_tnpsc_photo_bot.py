@@ -1,5 +1,5 @@
 # telegram_tnpsc_photo_bot.py
-# A Telegram bot for TNPSC-compliant photo processing with payment link
+# A Telegram bot for TNPSC-compliant photo processing with payment link and webhooks
 
 import os
 import io
@@ -19,6 +19,8 @@ from telegram.ext import (
     CallbackQueryHandler,
     filters
 )
+from fastapi import FastAPI, Request
+import uvicorn
 
 # Enable logging
 logging.basicConfig(level=logging.INFO)
@@ -171,35 +173,12 @@ def process_photo(input_path: str, name: str, output_path: str = 'Photograph.jpg
             f.write(b'\x00' * (min_b - last_size))
     return output_path
 
-if __name__ == '__main__':
-    TOKEN = os.getenv('BOT_TOKEN')
-    webhook_url = f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true"
-    resp = requests.get(webhook_url)
-    logger.info(f"Webhook deletion response: {resp.status_code}")
-
-    app = ApplicationBuilder().token(TOKEN).build()
-    conv = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            PHOTO: [MessageHandler(filters.PHOTO, photo_handler)],
-            NAME:  [MessageHandler(filters.TEXT & ~filters.COMMAND, name_handler)],
-            PAYMENT: [CallbackQueryHandler(payment_callback, pattern='paid')]
-        },
-        fallbacks=[CommandHandler('cancel', cancel)]
-    )
-    app.add_handler(conv)
-    app.run_polling(drop_pending_updates=True)
-    from fastapi import FastAPI, Request
-from telegram import Bot, Update
-from telegram.ext import ApplicationBuilder
-
-# --- your existing imports, handlers, process_photo, etc. ---
-
-# Build Telegram application (but do NOT run_polling)
+# FastAPI webhook setup
+app = FastAPI()
 TOKEN = os.getenv('BOT_TOKEN')
 bot = Bot(TOKEN)
 app_telegram = ApplicationBuilder().token(TOKEN).build()
-# register your ConversationHandler here:
+# Register handlers
 conv = ConversationHandler(
     entry_points=[CommandHandler('start', start)],
     states={
@@ -211,22 +190,19 @@ conv = ConversationHandler(
 )
 app_telegram.add_handler(conv)
 
-# Create a FastAPI app
-app = FastAPI()
-
 @app.on_event("startup")
 async def startup():
-    # delete any old webhook
     await bot.delete_webhook(drop_pending_updates=True)
-    # set new webhook to this Railway URL
-    WEBHOOK_URL = f"https://<YOUR_RAILWAY_SUBDOMAIN>.railway.app/webhook/{TOKEN}"
-    await bot.set_webhook(WEBHOOK_URL)
+    webhook_url = f"https://<YOUR_RAILWAY_SUBDOMAIN>.railway.app/webhook/{TOKEN}"
+    await bot.set_webhook(webhook_url)
+    logger.info(f"Webhook set to {webhook_url}")
 
 @app.post(f"/webhook/{TOKEN}")
-async def telegram_webhook(req: Request):
-    data = await req.json()
+async def telegram_webhook(request: Request):
+    data = await request.json()
     update = Update.de_json(data, bot)
-    # push update into telegram ext queue
     await app_telegram.update_queue.put(update)
     return {"ok": True}
 
+if __name__ == '__main__':
+    uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 8000)))
