@@ -189,3 +189,44 @@ if __name__ == '__main__':
     )
     app.add_handler(conv)
     app.run_polling(drop_pending_updates=True)
+    from fastapi import FastAPI, Request
+from telegram import Bot, Update
+from telegram.ext import ApplicationBuilder
+
+# --- your existing imports, handlers, process_photo, etc. ---
+
+# Build Telegram application (but do NOT run_polling)
+TOKEN = os.getenv('BOT_TOKEN')
+bot = Bot(TOKEN)
+app_telegram = ApplicationBuilder().token(TOKEN).build()
+# register your ConversationHandler here:
+conv = ConversationHandler(
+    entry_points=[CommandHandler('start', start)],
+    states={
+        PHOTO: [MessageHandler(filters.PHOTO, photo_handler)],
+        NAME:  [MessageHandler(filters.TEXT & ~filters.COMMAND, name_handler)],
+        PAYMENT: [CallbackQueryHandler(payment_callback, pattern='paid')]
+    },
+    fallbacks=[CommandHandler('cancel', cancel)]
+)
+app_telegram.add_handler(conv)
+
+# Create a FastAPI app
+app = FastAPI()
+
+@app.on_event("startup")
+async def startup():
+    # delete any old webhook
+    await bot.delete_webhook(drop_pending_updates=True)
+    # set new webhook to this Railway URL
+    WEBHOOK_URL = f"https://<YOUR_RAILWAY_SUBDOMAIN>.railway.app/webhook/{TOKEN}"
+    await bot.set_webhook(WEBHOOK_URL)
+
+@app.post(f"/webhook/{TOKEN}")
+async def telegram_webhook(req: Request):
+    data = await req.json()
+    update = Update.de_json(data, bot)
+    # push update into telegram ext queue
+    await app_telegram.update_queue.put(update)
+    return {"ok": True}
+
