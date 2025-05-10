@@ -174,6 +174,12 @@ def process_photo(input_path: str, name: str, output_path: str = 'Photograph.jpg
     return output_path
 
 # FastAPI webhook setup
+TOKEN = os.getenv('BOT_TOKEN')
+if not TOKEN:
+    logger.error("Environment variable BOT_TOKEN is missing. Exiting.")
+    import sys; sys.exit(1)
+bot = Bot(TOKEN)
+app_telegram = ApplicationBuilder().token(TOKEN).build()
 app = FastAPI()
 TOKEN = os.getenv('BOT_TOKEN')
 bot = Bot(TOKEN)
