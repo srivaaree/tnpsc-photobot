@@ -174,10 +174,20 @@ app=FastAPI()
 
 @app.on_event('startup')
 async def on_startup():
-    logger.info('Initializing Telegram application...')
-    await app_telegram.initialize(); await app_telegram.start()
-    webhook_url=f'https://{DOMAIN}/webhook'
+    # Log domain and webhook URL for debugging
+    logger.info(f"RAILWAY_DOMAIN = '{DOMAIN}'")
+    webhook_url = f'https://{DOMAIN}/webhook'
+    logger.info(f"Setting webhook to {webhook_url}")
+
+    # Delete old webhook
     await bot.delete_webhook(drop_pending_updates=True)
+    # Attempt to set new webhook
+    try:
+        result = await bot.set_webhook(webhook_url)
+        logger.info(f"set_webhook result: {result}")
+    except Exception as e:
+        logger.error(f"Failed to set webhook to {webhook_url}: {e}")
+        raise
     await bot.set_webhook(webhook_url)
     logger.info(f'Webhook set to {webhook_url}')
 
