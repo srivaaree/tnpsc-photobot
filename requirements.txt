@@ -4,3 +4,5 @@ rembg
 onnxruntime
 requests
 numpy
+fastapi
+uvicorn
