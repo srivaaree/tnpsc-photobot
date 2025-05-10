@@ -2,7 +2,7 @@ python-telegram-bot
 pillow
 rembg
 onnxruntime
-requests
-numpy
 fastapi
 uvicorn
+requests
+numpy
