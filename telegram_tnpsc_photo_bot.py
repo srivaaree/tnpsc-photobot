@@ -193,7 +193,7 @@ app_telegram.add_handler(conv)
 @app.on_event("startup")
 async def startup():
     await bot.delete_webhook(drop_pending_updates=True)
-    webhook_url = f"https://<YOUR_RAILWAY_SUBDOMAIN>.railway.app/webhook/{TOKEN}"
+    webhook_url = f"https://web-production-51ac.up.railway.app/webhook/{TOKEN}"
     await bot.set_webhook(webhook_url)
     logger.info(f"Webhook set to {webhook_url}")
 
