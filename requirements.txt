@@ -1,8 +1,0 @@
-python-telegram-bot
-pillow
-rembg
-onnxruntime
-fastapi
-uvicorn
-requests
-numpy
