@@ -1,6 +1,7 @@
 # telegram_tnpsc_photo_bot.py
 # A Telegram bot for TNPSC-compliant photo processing using long-polling
-
+from fastapi import FastAPI
+app = FastAPI()
 import os
 import io
 import logging
